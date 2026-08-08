@@ -52,7 +52,7 @@ Inside BlueMap's configured web root:
 
 ```text
 bluemap-player-models-paper/
-  player-models.js
+  player-models-0.4.0.js
   skins/
     <uuid>.png
 ```
@@ -63,7 +63,7 @@ If the model is gray, check whether the corresponding skin PNG exists in the Blu
 
 If no model appears, confirm the BlueMap page can request the same `.../live/players.json` URL that BlueMap's ordinary player markers use.
 
-If the model faces backward, change the sign in `targetYaw` in `player-models.js`. Coordinate conventions can change between BlueMap webapp revisions; 0.2 uses the convention observed in BlueMap 5.23's current webapp.
+If the model faces backward, change the sign in `targetYaw` in `player-models-0.4.0.js`. Coordinate conventions can change between BlueMap webapp revisions; 0.4 uses the convention observed in BlueMap 5.23's current webapp.
 
 ## Why this design
 

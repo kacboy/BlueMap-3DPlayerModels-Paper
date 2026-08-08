@@ -10,7 +10,6 @@
   let app = null;
   let Three = null;
   let addonRoot = null;
-  let lastBlueMapMarkerRepair = 0;
 
   const waitForBlueMap = () => {
     if (!window.bluemap?.mapViewer || !window.BlueMap?.Three) {
@@ -24,7 +23,7 @@
     sceneRoot = new Three.Group();
     sceneRoot.name = "bluemap-paper-player-models";
     app.mapViewer.markers.add(sceneRoot);
-    console.info("[BlueMapPlayerModelsPaper] 3D player renderer loaded");
+    console.info("[BlueMapPlayerModelsPaper] v0.4.0 renderer loaded");
 
     setInterval(syncPlayers, POLL_MS);
     animate();
@@ -49,7 +48,6 @@
       if (!response.ok) return;
       const payload = await response.json();
       const incoming = new Set();
-      let missingBlueMapMarker = false;
 
       for (const player of payload.players || []) {
         if (!player?.uuid || !player?.position) continue;
@@ -67,20 +65,6 @@
         actor.targetYaw = degreesToRadians(-(Number(player.rotation?.yaw) || 0));
         actor.targetPitch = degreesToRadians(Number(player.rotation?.pitch) || 0);
 
-        // Keep BlueMap's native player marker (head icon + name label) alive.
-        // We never replace it; if BlueMap has not created it yet after a map
-        // change/reload, ask its own PlayerMarkerManager to refresh.
-        const nativeMarker = app.playerMarkerManager?.getPlayerMarker?.(player.uuid);
-        if (!nativeMarker) {
-          missingBlueMapMarker = true;
-        } else {
-          // BlueMap's native marker belongs at the player's head (+1.8 Y).
-          // Keep it visible alongside the 3D model, even if the marker set was
-          // hidden during a previous webapp state/map switch.
-          nativeMarker.visible = !player.foreign;
-        }
-        const nativeSet = app.playerMarkerManager?.root?.markerSets?.get?.("bm-players");
-        if (nativeSet) nativeSet.visible = true;
       }
 
       for (const [uuid, actor] of MODELS) {
@@ -90,7 +74,18 @@
           MODELS.delete(uuid);
         }
       }
-      if (missingBlueMapMarker) repairBlueMapPlayerMarkers();
+      // Feed the same payload into BlueMap's own PlayerMarkerManager. This is
+      // BlueMap's native path for creating its head icon + name label, so our
+      // 3D renderer does not replace or emulate the normal player marker.
+      const nativeManager = app.playerMarkerManager;
+      if (nativeManager?.updateFromData) {
+        nativeManager.updateFromData(payload);
+        const nativeSet = nativeManager.root?.markerSets?.get?.("bm-players");
+        if (nativeSet) {
+          nativeSet.visible = true;
+          if (nativeSet.data) nativeSet.data.defaultHide = false;
+        }
+      }
       app.mapViewer.redraw();
     } catch (error) {
       console.debug("[BlueMapPlayerModelsPaper] player update failed", error);
@@ -188,49 +183,39 @@
   // BlueMap bundles its own Three.js build. Use the same face-by-face UV
   // layout as the working BlueMap Player Models addon instead of relying on
   // skinview3d's BufferAttribute replacement behavior.
+  // Exact UV ordering used by skinview3d's Minecraft SkinObject.
+  // BoxGeometry's six faces do not all use the same vertex winding, so writing
+  // a simple rectangle per face causes rotated/mirrored skin regions.
   function setSkinUVs(box, u, v, width, height, depth) {
-    const regions = [
-      [u + depth + width, v + depth, depth, height], // +X / right
-      [u, v + depth, depth, height],                 // -X / left
-      [u + depth, v, width, depth],                  // +Y / top
-      [u + depth + width, v, width, depth],          // -Y / bottom
-      [u + depth, v + depth, width, height],         // +Z / front
-      [u + depth * 2 + width, v + depth, width, height] // -Z / back
+    const toFaceVertices = (x1, y1, x2, y2) => [
+      [x1 / 64, 1.0 - y2 / 64],
+      [x2 / 64, 1.0 - y2 / 64],
+      [x2 / 64, 1.0 - y1 / 64],
+      [x1 / 64, 1.0 - y1 / 64]
+    ];
+
+    const top = toFaceVertices(u + depth, v, u + width + depth, v + depth);
+    const bottom = toFaceVertices(u + width + depth, v, u + width * 2 + depth, v + depth);
+    const left = toFaceVertices(u, v + depth, u + depth, v + depth + height);
+    const front = toFaceVertices(u + depth, v + depth, u + width + depth, v + depth + height);
+    const right = toFaceVertices(u + width + depth, v + depth, u + width + depth * 2, v + height + depth);
+    const back = toFaceVertices(u + width + depth * 2, v + depth, u + width * 2 + depth * 2, v + height + depth);
+
+    const faces = [
+      [right[3], right[2], right[0], right[1]],
+      [left[3], left[2], left[0], left[1]],
+      [top[3], top[2], top[0], top[1]],
+      [bottom[0], bottom[1], bottom[3], bottom[2]],
+      [front[3], front[2], front[0], front[1]],
+      [back[3], back[2], back[0], back[1]]
     ];
 
     const uv = box.attributes.uv;
-    regions.forEach(([x, y, regionWidth, regionHeight], face) => {
-      const left = x / 64;
-      const right = (x + regionWidth) / 64;
-      const top = 1 - y / 64;
-      const bottom = 1 - (y + regionHeight) / 64;
-      const i = face * 4;
-
-      uv.setXY(i, left, top);
-      uv.setXY(i + 1, right, top);
-      uv.setXY(i + 2, left, bottom);
-      uv.setXY(i + 3, right, bottom);
-    });
+    let i = 0;
+    for (const face of faces) {
+      for (const [x, y] of face) uv.setXY(i++, x, y);
+    }
     uv.needsUpdate = true;
-  }
-
-  function repairBlueMapPlayerMarkers() {
-    const now = Date.now();
-    if (now - lastBlueMapMarkerRepair < 3000) return;
-    const manager = app.playerMarkerManager;
-    if (!manager?.update) return;
-    lastBlueMapMarkerRepair = now;
-    Promise.resolve(manager.update()).then(() => {
-      const nativeSet = manager.root?.markerSets?.get?.("bm-players");
-      if (nativeSet) nativeSet.visible = true;
-      for (const actor of MODELS.values()) {
-        const marker = manager.getPlayerMarker?.(actor.root.name.replace("bmpm-player-", ""));
-        if (marker) marker.visible = true;
-      }
-      app.mapViewer.redraw();
-    }).catch(error => {
-      console.debug("[BlueMapPlayerModelsPaper] native BlueMap marker refresh failed", error);
-    });
   }
 
   function animate() {

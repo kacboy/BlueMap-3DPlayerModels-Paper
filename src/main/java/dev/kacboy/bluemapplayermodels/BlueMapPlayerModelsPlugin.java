@@ -23,7 +23,7 @@ import java.util.function.Consumer;
 
 public final class BlueMapPlayerModelsPlugin extends JavaPlugin implements Listener {
     private static final String WEB_DIR = "bluemap-player-models-paper";
-    private static final String SCRIPT_NAME = "player-models.js";
+    private static final String SCRIPT_NAME = "player-models-0.4.0.js";
 
     private final AtomicReference<BlueMapAPI> blueMap = new AtomicReference<>();
     private final Consumer<BlueMapAPI> enableListener = this::onBlueMapEnable;

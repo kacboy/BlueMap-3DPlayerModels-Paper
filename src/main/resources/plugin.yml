@@ -1,5 +1,5 @@
 name: BlueMapPlayerModelsPaper
-version: 0.1.0
+version: 0.4.0
 main: dev.kacboy.bluemapplayermodels.BlueMapPlayerModelsPlugin
 api-version: '26.2'
 depend: [BlueMap]
