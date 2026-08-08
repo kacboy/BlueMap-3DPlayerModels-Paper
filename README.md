@@ -2,7 +2,7 @@
 
 Small Paper addon for **Paper 26.2** + **BlueMap 5.23** that adds skin-textured 3D online-player models to the BlueMap webapp.
 
-## What version 0.2 does
+## What version 0.3 does
 
 - Uses BlueMap's existing `/live/players.json` data for UUID, position, yaw and pitch.
 - Uses BlueMap's own configured skin provider to cache each online player's full skin.
@@ -28,7 +28,7 @@ gradle build
 The plugin jar will be:
 
 ```text
-build/libs/BlueMapPlayerModelsPaper-0.2.0.jar
+build/libs/BlueMapPlayerModelsPaper-0.3.0.jar
 ```
 
 Put that jar beside BlueMap in your Paper server's `plugins/` folder and restart the server.
@@ -74,3 +74,8 @@ map.data.liveDataRoot + "/live/players.json"
 ```
 
 and exposes the active map as `window.bluemap.mapViewer.map`. The addon uses those same values rather than publishing a second player-position API.
+
+
+## 0.3.0 fixes
+- Uses the face-by-face UV mapping proven by DecoderCoder/bluemap-player-models on BlueMap's bundled Three.js.
+- Forces BlueMap's native `bm-players` marker set and live player markers visible so the original head/name marker coexists with the 3D model.
