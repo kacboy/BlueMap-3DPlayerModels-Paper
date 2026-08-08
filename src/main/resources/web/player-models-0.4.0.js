@@ -499,11 +499,13 @@
 
         actor.nativeMarkerHidden = shouldHide;
 
-        marker.visible = !shouldHide;
-
         if (marker.element) {
-            marker.element.style.display =
-                shouldHide ? "none" : "";
+            const head = marker.element.querySelector("img");
+
+            if (head) {
+                head.style.display =
+                    shouldHide ? "none" : "";
+            }
         }
     }
 
@@ -521,10 +523,13 @@
             return;
         }
 
-        marker.visible = true;
-
         if (marker.element) {
-            marker.element.style.display = "";
+            const head =
+                marker.element.querySelector("img");
+
+            if (head) {
+                head.style.display = "";
+            }
         }
 
         actor.nativeMarkerHidden = false;
