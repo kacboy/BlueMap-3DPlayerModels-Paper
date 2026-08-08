@@ -2,7 +2,7 @@
 
 Small Paper addon for **Paper 26.2** + **BlueMap 5.23** that adds skin-textured 3D online-player models to the BlueMap webapp.
 
-## What version 0.1 does
+## What version 0.2 does
 
 - Uses BlueMap's existing `/live/players.json` data for UUID, position, yaw and pitch.
 - Uses BlueMap's own configured skin provider to cache each online player's full skin.
@@ -10,8 +10,10 @@ Small Paper addon for **Paper 26.2** + **BlueMap 5.23** that adds skin-textured 
 - Adds a Three.js group to `window.bluemap.mapViewer.markers`.
 - Smoothly interpolates player position and rotation in the browser.
 - Supports standard 64x64 skins with classic-width arms.
+- Uses Minecraft-correct per-vertex cuboid UVs, fixing rotated/misaligned skin faces.
+- Leaves BlueMap's native player head/name markers enabled and asks BlueMap to repair them if they are missing after a map reload.
 
-This first build intentionally does **not** include armor, crouching/walking animations, outer skin layers, nametags, or automatic hiding of BlueMap's normal 2D player heads.
+This build intentionally does **not** include armor, crouching/walking animations, outer skin layers, or slim-arm auto-detection. BlueMap's normal player head/name markers are deliberately kept.
 
 ## Build it
 
@@ -26,7 +28,7 @@ gradle build
 The plugin jar will be:
 
 ```text
-build/libs/BlueMapPlayerModelsPaper-0.1.0.jar
+build/libs/BlueMapPlayerModelsPaper-0.2.0.jar
 ```
 
 Put that jar beside BlueMap in your Paper server's `plugins/` folder and restart the server.
@@ -61,7 +63,7 @@ If the model is gray, check whether the corresponding skin PNG exists in the Blu
 
 If no model appears, confirm the BlueMap page can request the same `.../live/players.json` URL that BlueMap's ordinary player markers use.
 
-If the model faces backward, change the sign in `targetYaw` in `player-models.js`. Coordinate conventions can change between BlueMap webapp revisions; 0.1 uses the convention observed in BlueMap 5.23's current webapp.
+If the model faces backward, change the sign in `targetYaw` in `player-models.js`. Coordinate conventions can change between BlueMap webapp revisions; 0.2 uses the convention observed in BlueMap 5.23's current webapp.
 
 ## Why this design
 

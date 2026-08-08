@@ -10,6 +10,7 @@
   let app = null;
   let Three = null;
   let addonRoot = null;
+  let lastBlueMapMarkerRepair = 0;
 
   const waitForBlueMap = () => {
     if (!window.bluemap?.mapViewer || !window.BlueMap?.Three) {
@@ -48,6 +49,7 @@
       if (!response.ok) return;
       const payload = await response.json();
       const incoming = new Set();
+      let missingBlueMapMarker = false;
 
       for (const player of payload.players || []) {
         if (!player?.uuid || !player?.position) continue;
@@ -64,6 +66,12 @@
         actor.target.set(player.position.x, player.position.y, player.position.z);
         actor.targetYaw = degreesToRadians(-(Number(player.rotation?.yaw) || 0));
         actor.targetPitch = degreesToRadians(Number(player.rotation?.pitch) || 0);
+
+        // Keep BlueMap's native player marker (head icon + name label) alive.
+        // We never replace it; if BlueMap has not created it yet after a map
+        // change/reload, ask its own PlayerMarkerManager to refresh.
+        const nativeMarker = app.playerMarkerManager?.getPlayerMarker?.(player.uuid);
+        if (!nativeMarker) missingBlueMapMarker = true;
       }
 
       for (const [uuid, actor] of MODELS) {
@@ -73,6 +81,7 @@
           MODELS.delete(uuid);
         }
       }
+      if (missingBlueMapMarker) repairBlueMapPlayerMarkers();
       app.mapViewer.redraw();
     } catch (error) {
       console.debug("[BlueMapPlayerModelsPaper] player update failed", error);
@@ -138,43 +147,80 @@
       else if (Three.sRGBEncoding) texture.encoding = Three.sRGBEncoding;
       texture.needsUpdate = true;
 
-      setPartMaterials(actor, actor.head, texture, partFaces.head);
-      setPartMaterials(actor, actor.body, texture, partFaces.body);
-      setPartMaterials(actor, actor.rightArm, texture, partFaces.rightArm);
-      setPartMaterials(actor, actor.leftArm, texture, partFaces.leftArm);
-      setPartMaterials(actor, actor.rightLeg, texture, partFaces.rightLeg);
-      setPartMaterials(actor, actor.leftLeg, texture, partFaces.leftLeg);
+      // Use the exact Minecraft cuboid UV layout used by skinview3d instead of
+      // cropping six separate textures. Three.js rotates BoxGeometry faces in
+      // different directions, so texture offset/repeat alone misaligns skins.
+      setSkinUVs(actor.head.geometry, 0, 0, 8, 8, 8);
+      setSkinUVs(actor.body.geometry, 16, 16, 8, 12, 4);
+      setSkinUVs(actor.rightArm.geometry, 40, 16, 4, 12, 4);
+      setSkinUVs(actor.leftArm.geometry, 32, 48, 4, 12, 4);
+      setSkinUVs(actor.rightLeg.geometry, 0, 16, 4, 12, 4);
+      setSkinUVs(actor.leftLeg.geometry, 16, 48, 4, 12, 4);
+
+      const skinMaterial = new Three.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        alphaTest: 0.1
+      });
+      actor.materials.push(skinMaterial);
+
+      actor.head.material = skinMaterial;
+      actor.body.material = skinMaterial;
+      actor.rightArm.material = skinMaterial;
+      actor.leftArm.material = skinMaterial;
+      actor.rightLeg.material = skinMaterial;
+      actor.leftLeg.material = skinMaterial;
       app.mapViewer.redraw();
     }, undefined, () => {
       console.debug(`[BlueMapPlayerModelsPaper] skin not ready for ${uuid}: ${url}`);
     });
   }
 
-  // BoxGeometry material order: +X, -X, +Y, -Y, +Z, -Z.
-  // Region format is [x, y, width, height] in the 64x64 Minecraft skin.
-  const partFaces = {
-    head: [ [0,8,8,8], [16,8,8,8], [8,0,8,8], [16,0,8,8], [8,8,8,8], [24,8,8,8] ],
-    body: [ [16,20,4,12], [28,20,4,12], [20,16,8,4], [28,16,8,4], [20,20,8,12], [32,20,8,12] ],
-    rightArm: [ [40,20,4,12], [48,20,4,12], [44,16,4,4], [48,16,4,4], [44,20,4,12], [52,20,4,12] ],
-    leftArm: [ [32,52,4,12], [40,52,4,12], [36,48,4,4], [40,48,4,4], [36,52,4,12], [44,52,4,12] ],
-    rightLeg: [ [0,20,4,12], [8,20,4,12], [4,16,4,4], [8,16,4,4], [4,20,4,12], [12,20,4,12] ],
-    leftLeg: [ [16,52,4,12], [24,52,4,12], [20,48,4,4], [24,48,4,4], [20,52,4,12], [28,52,4,12] ]
-  };
+  // This is the same cuboid UV convention used by skinview3d for Minecraft
+  // skins. BoxGeometry UV vertex order is +X, -X, +Y, -Y, +Z, -Z.
+  function setSkinUVs(box, u, v, width, height, depth) {
+    const toFaceVertices = (x1, y1, x2, y2) => [
+      [x1 / 64, 1 - y2 / 64],
+      [x2 / 64, 1 - y2 / 64],
+      [x2 / 64, 1 - y1 / 64],
+      [x1 / 64, 1 - y1 / 64]
+    ];
 
-  function setPartMaterials(actor, mesh, sourceTexture, regions) {
-    const materials = regions.map(region => materialForRegion(sourceTexture, region));
-    actor.materials.push(...materials);
-    mesh.material = materials;
+    const top = toFaceVertices(u + depth, v, u + width + depth, v + depth);
+    const bottom = toFaceVertices(u + width + depth, v, u + width * 2 + depth, v + depth);
+    const left = toFaceVertices(u, v + depth, u + depth, v + depth + height);
+    const front = toFaceVertices(u + depth, v + depth, u + width + depth, v + depth + height);
+    const right = toFaceVertices(u + width + depth, v + depth, u + width + depth * 2, v + height + depth);
+    const back = toFaceVertices(u + width + depth * 2, v + depth, u + width * 2 + depth * 2, v + height + depth);
+
+    const ordered = [
+      [right[3], right[2], right[0], right[1]],
+      [left[3], left[2], left[0], left[1]],
+      [top[3], top[2], top[0], top[1]],
+      [bottom[0], bottom[1], bottom[3], bottom[2]],
+      [front[3], front[2], front[0], front[1]],
+      [back[3], back[2], back[0], back[1]]
+    ];
+
+    const uv = box.attributes.uv;
+    let i = 0;
+    for (const face of ordered) {
+      for (const [x, y] of face) {
+        uv.setXY(i++, x, y);
+      }
+    }
+    uv.needsUpdate = true;
   }
 
-  function materialForRegion(source, [x, y, w, h]) {
-    const texture = source.clone();
-    texture.needsUpdate = true;
-    texture.wrapS = Three.ClampToEdgeWrapping;
-    texture.wrapT = Three.ClampToEdgeWrapping;
-    texture.repeat.set(w / 64, h / 64);
-    texture.offset.set(x / 64, 1 - ((y + h) / 64));
-    return new Three.MeshBasicMaterial({ map: texture, transparent: true, alphaTest: 0.1 });
+  function repairBlueMapPlayerMarkers() {
+    const now = Date.now();
+    if (now - lastBlueMapMarkerRepair < 3000) return;
+    const manager = app.playerMarkerManager;
+    if (!manager?.update) return;
+    lastBlueMapMarkerRepair = now;
+    Promise.resolve(manager.update()).catch(error => {
+      console.debug("[BlueMapPlayerModelsPaper] native BlueMap marker refresh failed", error);
+    });
   }
 
   function animate() {
