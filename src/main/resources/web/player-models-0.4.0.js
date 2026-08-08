@@ -26,6 +26,7 @@
 
         app = window.bluemap;
         Three = window.BlueMap.Three;
+
         addonRoot = new URL(
             ".",
             document.currentScript?.src || document.baseURI
@@ -37,7 +38,7 @@
         app.mapViewer.markers.add(sceneRoot);
 
         console.info(
-            "[BlueMapPlayerModelsPaper] v0.4.1 renderer loaded"
+            "[BlueMapPlayerModelsPaper] v0.4.2 renderer loaded"
         );
 
         setInterval(syncPlayers, POLL_MS);
@@ -107,8 +108,6 @@
 
             for (const [uuid, actor] of MODELS) {
                 if (!incoming.has(uuid)) {
-                    // Make sure we don't leave BlueMap's normal
-                    // player marker hidden when our model disappears.
                     restoreNativeMarker(actor);
 
                     sceneRoot.remove(actor.root);
@@ -246,19 +245,6 @@
                 texture.minFilter = Three.NearestFilter;
                 texture.generateMipmaps = false;
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * Do NOT set:
-                 *
-                 *     texture.flipY = false;
-                 *
-                 * here.
-                 *
-                 * Our UV coordinates already perform the Minecraft
-                 * V-axis conversion.
-                 */
-
                 if (Three.SRGBColorSpace) {
                     texture.colorSpace = Three.SRGBColorSpace;
                 } else if (Three.sRGBEncoding) {
@@ -314,10 +300,8 @@
 
                 actor.head.material = skinMaterial;
                 actor.body.material = skinMaterial;
-
                 actor.rightArm.material = skinMaterial;
                 actor.leftArm.material = skinMaterial;
-
                 actor.rightLeg.material = skinMaterial;
                 actor.leftLeg.material = skinMaterial;
 
@@ -334,127 +318,116 @@
         );
     }
 
+    /*
+     * Minecraft skin UV mapping for Three.BoxGeometry.
+     *
+     * BoxGeometry stores four UV vertices for each of its six faces:
+     *
+     * 0 = right
+     * 1 = left
+     * 2 = top
+     * 3 = bottom
+     * 4 = front
+     * 5 = back
+     *
+     * Writing each skin rectangle directly into those slots avoids the
+     * incorrect face/vertex permutations used in the previous version.
+     */
     function setSkinUVs(
-        box,
-        u,
-        v,
+        geometry,
+        x,
+        y,
         width,
         height,
         depth
     ) {
-        const toFaceVertices = (
-            x1,
-            y1,
-            x2,
-            y2
-        ) => [
+        const regions = [
+            // right
             [
-                x1 / 64,
-                1.0 - y2 / 64
+                x + depth + width,
+                y + depth,
+                depth,
+                height
             ],
+
+            // left
             [
-                x2 / 64,
-                1.0 - y2 / 64
+                x,
+                y + depth,
+                depth,
+                height
             ],
+
+            // top
             [
-                x2 / 64,
-                1.0 - y1 / 64
+                x + depth,
+                y,
+                width,
+                depth
             ],
+
+            // bottom
             [
-                x1 / 64,
-                1.0 - y1 / 64
+                x + depth + width,
+                y,
+                width,
+                depth
+            ],
+
+            // front
+            [
+                x + depth,
+                y + depth,
+                width,
+                height
+            ],
+
+            // back
+            [
+                x + depth * 2 + width,
+                y + depth,
+                width,
+                height
             ]
         ];
 
-        const top = toFaceVertices(
-            u + depth,
-            v,
-            u + width + depth,
-            v + depth
-        );
+        const uv = geometry.attributes.uv;
 
-        const bottom = toFaceVertices(
-            u + width + depth,
-            v,
-            u + width * 2 + depth,
-            v + depth
-        );
+        regions.forEach(
+            ([rx, ry, rw, rh], face) => {
+                const left = rx / 64;
+                const right = (rx + rw) / 64;
 
-        const left = toFaceVertices(
-            u,
-            v + depth,
-            u + depth,
-            v + depth + height
-        );
+                const top = 1 - ry / 64;
+                const bottom = 1 - (ry + rh) / 64;
 
-        const front = toFaceVertices(
-            u + depth,
-            v + depth,
-            u + width + depth,
-            v + depth + height
-        );
+                const index = face * 4;
 
-        const right = toFaceVertices(
-            u + width + depth,
-            v + depth,
-            u + width + depth * 2,
-            v + height + depth
-        );
+                uv.setXY(
+                    index,
+                    left,
+                    top
+                );
 
-        const back = toFaceVertices(
-            u + width + depth * 2,
-            v + depth,
-            u + width * 2 + depth * 2,
-            v + height + depth
-        );
+                uv.setXY(
+                    index + 1,
+                    right,
+                    top
+                );
 
-        const faces = [
-            [
-                right[3],
-                right[2],
-                right[0],
-                right[1]
-            ],
-            [
-                left[3],
-                left[2],
-                left[0],
-                left[1]
-            ],
-            [
-                top[3],
-                top[2],
-                top[0],
-                top[1]
-            ],
-            [
-                bottom[0],
-                bottom[1],
-                bottom[3],
-                bottom[2]
-            ],
-            [
-                front[3],
-                front[2],
-                front[0],
-                front[1]
-            ],
-            [
-                back[3],
-                back[2],
-                back[0],
-                back[1]
-            ]
-        ];
+                uv.setXY(
+                    index + 2,
+                    left,
+                    bottom
+                );
 
-        const uv = box.attributes.uv;
-        let i = 0;
-
-        for (const face of faces) {
-            for (const [x, y] of face) {
-                uv.setXY(i++, x, y);
+                uv.setXY(
+                    index + 3,
+                    right,
+                    bottom
+                );
             }
-        }
+        );
 
         uv.needsUpdate = true;
     }
@@ -518,8 +491,6 @@
         const shouldHide =
             distance < HIDE_NATIVE_MARKER_DISTANCE;
 
-        // Avoid repeatedly changing the DOM every animation frame
-        // when nothing has changed.
         if (
             actor.nativeMarkerHidden === shouldHide
         ) {
@@ -528,11 +499,8 @@
 
         actor.nativeMarkerHidden = shouldHide;
 
-        // PlayerMarker inherits Three.js visibility.
         marker.visible = !shouldHide;
 
-        // BlueMap's actual player head/name are CSS elements,
-        // so hide the DOM element directly too.
         if (marker.element) {
             marker.element.style.display =
                 shouldHide ? "none" : "";
