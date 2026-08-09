@@ -5,11 +5,7 @@
     window.__bmpmPaperLoaded = true;
 
     const POLL_MS = 1000;
-
-    // Native BlueMap head + nametag disappear when the camera is
-    // closer than this many blocks to the 3D player.
     const HIDE_NATIVE_MARKER_DISTANCE = 35;
-
     const MODELS = new Map();
 
     let activeMapId = null;
@@ -26,20 +22,13 @@
 
         app = window.bluemap;
         Three = window.BlueMap.Three;
-
-        addonRoot = new URL(
-            ".",
-            document.currentScript?.src || document.baseURI
-        );
+        addonRoot = new URL(".", document.currentScript?.src || document.baseURI);
 
         sceneRoot = new Three.Group();
         sceneRoot.name = "bluemap-paper-player-models";
-
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info(
-            "[BlueMapPlayerModelsPaper] v0.4.2 renderer loaded"
-        );
+        console.info("[BlueMapPlayerModelsPaper] v0.4.3 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();
@@ -63,9 +52,7 @@
         try {
             const response = await fetch(
                 `${liveRoot}/live/players.json?bmpm=${Date.now()}`,
-                {
-                    cache: "no-store"
-                }
+                { cache: "no-store" }
             );
 
             if (!response.ok) return;
@@ -82,10 +69,8 @@
 
                 if (!actor) {
                     actor = createActor(player);
-
                     MODELS.set(player.uuid, actor);
                     sceneRoot.add(actor.root);
-
                     loadSkin(actor, player.uuid);
                 }
 
@@ -109,18 +94,13 @@
             for (const [uuid, actor] of MODELS) {
                 if (!incoming.has(uuid)) {
                     restoreNativeMarker(actor);
-
                     sceneRoot.remove(actor.root);
                     disposeActor(actor);
                     MODELS.delete(uuid);
                 }
             }
 
-            // BlueMap already updates its own player markers.
-            // We deliberately leave that system alone.
-
             app.mapViewer.redraw();
-
         } catch (error) {
             console.debug(
                 "[BlueMapPlayerModelsPaper] player update failed",
@@ -148,15 +128,12 @@
             new Three.BoxGeometry(0.5, 0.5, 0.5),
             placeholder
         );
-
-        head.position.y = 0;
         headPivot.add(head);
 
         const body = new Three.Mesh(
             new Three.BoxGeometry(0.5, 0.75, 0.25),
             placeholder
         );
-
         body.position.y = 1.0;
         bodyRoot.add(body);
 
@@ -164,7 +141,6 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-
         rightArm.position.set(-0.375, 1.0, 0);
         bodyRoot.add(rightArm);
 
@@ -172,7 +148,6 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-
         leftArm.position.set(0.375, 1.0, 0);
         bodyRoot.add(leftArm);
 
@@ -180,7 +155,6 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-
         rightLeg.position.set(-0.125, 0.375, 0);
         bodyRoot.add(rightLeg);
 
@@ -188,11 +162,9 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-
         leftLeg.position.set(0.125, 0.375, 0);
         bodyRoot.add(leftLeg);
 
-        // BlueMap player coordinates represent the player's feet.
         root.position.set(
             player.position.x,
             player.position.y,
@@ -201,32 +173,26 @@
 
         return {
             uuid: player.uuid,
-
             root,
             bodyRoot,
             headPivot,
-
             head,
             body,
             rightArm,
             leftArm,
             rightLeg,
             leftLeg,
-
             target: new Three.Vector3(
                 player.position.x,
                 player.position.y,
                 player.position.z
             ),
-
             targetYaw: degreesToRadians(
                 -(Number(player.rotation?.yaw) || 0)
             ),
-
             targetPitch: degreesToRadians(
                 Number(player.rotation?.pitch) || 0
             ),
-
             materials: [],
             nativeMarkerHidden: false
         };
@@ -239,8 +205,20 @@
 
         new Three.TextureLoader().load(
             url,
-
             texture => {
+                const image = texture.image;
+                const isLegacy = image?.width === 64 && image?.height === 32;
+                const isModern = image?.width === 64 && image?.height === 64;
+
+                if (!isLegacy && !isModern) {
+                    console.warn(
+                        `[BlueMapPlayerModelsPaper] unsupported skin size for ${uuid}: ` +
+                        `${image?.width}x${image?.height}`
+                    );
+                    texture.dispose();
+                    return;
+                }
+
                 texture.magFilter = Three.NearestFilter;
                 texture.minFilter = Three.NearestFilter;
                 texture.generateMipmaps = false;
@@ -253,48 +231,31 @@
 
                 texture.needsUpdate = true;
 
-                setSkinUVs(
-                    actor.head.geometry,
-                    0, 0,
-                    8, 8, 8
-                );
+                // Head/body/right limbs exist in both skin formats.
+                setSkinUVs(actor.head.geometry, 0, 0, 8, 8, 8, false, image.height);
+                setSkinUVs(actor.body.geometry, 16, 16, 8, 12, 4, false, image.height);
+                setSkinUVs(actor.rightArm.geometry, 40, 16, 4, 12, 4, false, image.height);
+                setSkinUVs(actor.rightLeg.geometry, 0, 16, 4, 12, 4, false, image.height);
 
-                setSkinUVs(
-                    actor.body.geometry,
-                    16, 16,
-                    8, 12, 4
-                );
+                if (isLegacy) {
+                    // 64x32 skins have no separate left-arm/left-leg pixels.
+                    // Old Minecraft mirrored the right limbs onto the left side.
+                    setSkinUVs(actor.leftArm.geometry, 40, 16, 4, 12, 4, true, image.height);
+                    setSkinUVs(actor.leftLeg.geometry, 0, 16, 4, 12, 4, true, image.height);
 
-                setSkinUVs(
-                    actor.rightArm.geometry,
-                    40, 16,
-                    4, 12, 4
-                );
+                    console.info(
+                        `[BlueMapPlayerModelsPaper] legacy 64x32 skin detected for ${uuid}`
+                    );
+                } else {
+                    setSkinUVs(actor.leftArm.geometry, 32, 48, 4, 12, 4, false, image.height);
+                    setSkinUVs(actor.leftLeg.geometry, 16, 48, 4, 12, 4, false, image.height);
+                }
 
-                setSkinUVs(
-                    actor.leftArm.geometry,
-                    32, 48,
-                    4, 12, 4
-                );
-
-                setSkinUVs(
-                    actor.rightLeg.geometry,
-                    0, 16,
-                    4, 12, 4
-                );
-
-                setSkinUVs(
-                    actor.leftLeg.geometry,
-                    16, 48,
-                    4, 12, 4
-                );
-
-                const skinMaterial =
-                    new Three.MeshBasicMaterial({
-                        map: texture,
-                        transparent: true,
-                        alphaTest: 0.1
-                    });
+                const skinMaterial = new Three.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    alphaTest: 0.1
+                });
 
                 actor.materials.push(skinMaterial);
 
@@ -307,9 +268,7 @@
 
                 app.mapViewer.redraw();
             },
-
             undefined,
-
             () => {
                 console.debug(
                     `[BlueMapPlayerModelsPaper] skin not ready for ${uuid}: ${url}`
@@ -319,19 +278,11 @@
     }
 
     /*
-     * Minecraft skin UV mapping for Three.BoxGeometry.
+     * Minecraft cuboid UV mapping.
      *
-     * BoxGeometry stores four UV vertices for each of its six faces:
-     *
-     * 0 = right
-     * 1 = left
-     * 2 = top
-     * 3 = bottom
-     * 4 = front
-     * 5 = back
-     *
-     * Writing each skin rectangle directly into those slots avoids the
-     * incorrect face/vertex permutations used in the previous version.
+     * textureHeight is 32 for legacy skins and 64 for modern skins.
+     * mirror=true is used for the left arm/leg on 64x32 skins, because
+     * classic skins reuse the right-limb artwork for the opposite limb.
      */
     function setSkinUVs(
         geometry,
@@ -339,95 +290,41 @@
         y,
         width,
         height,
-        depth
+        depth,
+        mirror = false,
+        textureHeight = 64
     ) {
-        const regions = [
-            // right
-            [
-                x + depth + width,
-                y + depth,
-                depth,
-                height
-            ],
-
-            // left
-            [
-                x,
-                y + depth,
-                depth,
-                height
-            ],
-
-            // top
-            [
-                x + depth,
-                y,
-                width,
-                depth
-            ],
-
-            // bottom
-            [
-                x + depth + width,
-                y,
-                width,
-                depth
-            ],
-
-            // front
-            [
-                x + depth,
-                y + depth,
-                width,
-                height
-            ],
-
-            // back
-            [
-                x + depth * 2 + width,
-                y + depth,
-                width,
-                height
-            ]
+        let regions = [
+            [x + depth + width, y + depth, depth, height],    // right
+            [x, y + depth, depth, height],                    // left
+            [x + depth, y, width, depth],                     // top
+            [x + depth + width, y, width, depth],             // bottom
+            [x + depth, y + depth, width, height],            // front
+            [x + depth * 2 + width, y + depth, width, height] // back
         ];
+
+        // Mirrored legacy limb: swap the two side-face sources.
+        if (mirror) {
+            [regions[0], regions[1]] = [regions[1], regions[0]];
+        }
 
         const uv = geometry.attributes.uv;
 
-        regions.forEach(
-            ([rx, ry, rw, rh], face) => {
-                const left = rx / 64;
-                const right = (rx + rw) / 64;
+        regions.forEach(([rx, ry, rw, rh], face) => {
+            const uLeft = rx / 64;
+            const uRight = (rx + rw) / 64;
+            const vTop = 1 - ry / textureHeight;
+            const vBottom = 1 - (ry + rh) / textureHeight;
+            const index = face * 4;
 
-                const top = 1 - ry / 64;
-                const bottom = 1 - (ry + rh) / 64;
+            const left = mirror ? uRight : uLeft;
+            const right = mirror ? uLeft : uRight;
 
-                const index = face * 4;
-
-                uv.setXY(
-                    index,
-                    left,
-                    top
-                );
-
-                uv.setXY(
-                    index + 1,
-                    right,
-                    top
-                );
-
-                uv.setXY(
-                    index + 2,
-                    left,
-                    bottom
-                );
-
-                uv.setXY(
-                    index + 3,
-                    right,
-                    bottom
-                );
-            }
-        );
+            uv.setXY(index,     left,  vTop);
+            uv.setXY(index + 1, right, vTop);
+            uv.setXY(index + 2, left,  vBottom);
+            uv.setXY(index + 3, right, vBottom);
+        });
 
         uv.needsUpdate = true;
     }
@@ -440,10 +337,7 @@
         let changed = false;
 
         for (const actor of MODELS.values()) {
-            actor.root.position.lerp(
-                actor.target,
-                0.28
-            );
+            actor.root.position.lerp(actor.target, 0.28);
 
             actor.bodyRoot.rotation.y =
                 lerpAngle(
@@ -459,7 +353,6 @@
                 ) * 0.32;
 
             updateNativeMarkerVisibility(actor);
-
             changed = true;
         }
 
@@ -491,16 +384,16 @@
         const shouldHide =
             distance < HIDE_NATIVE_MARKER_DISTANCE;
 
-        if (
-            actor.nativeMarkerHidden === shouldHide
-        ) {
+        if (actor.nativeMarkerHidden === shouldHide) {
             return;
         }
 
         actor.nativeMarkerHidden = shouldHide;
 
+        // Hide only the native head icon; leave the player's name visible.
         if (marker.element) {
-            const head = marker.element.querySelector("img");
+            const head =
+                marker.element.querySelector("img");
 
             if (head) {
                 head.style.display =
@@ -540,7 +433,6 @@
 
         for (const actor of MODELS.values()) {
             restoreNativeMarker(actor);
-
             sceneRoot.remove(actor.root);
             disposeActor(actor);
         }
