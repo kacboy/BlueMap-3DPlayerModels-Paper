@@ -145,7 +145,3 @@ build/libs/
 - Armor rendering is intentionally not included.
 - The renderer currently uses classic/Steve-width arms.
 - BlueMap frontend internals are not a guaranteed stable API, so future BlueMap releases may require compatibility updates.
-
-## License
-
-Add your preferred license before publishing the repository publicly if you have not already chosen one.
