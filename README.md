@@ -1,37 +1,151 @@
-# BlueMap-3DPlayerModels-Paper 0.5.3
+# BlueMap-3DPlayerModels-Paper
 
-Paper 26.2 + BlueMap 5.23 addon that renders live players as skin-textured 3D models.
+Adds live 3D Minecraft player models to BlueMap on Paper servers.
 
-## 0.5.3 additions
+The plugin uses BlueMap's existing live player data for position and rotation, then renders a skinned 3D player model directly in the BlueMap web app.
 
-- Corrected the Minecraft model proportions: body, arms, head and cape shoulder pivot are shifted up by 2 skin pixels (0.125 blocks), removing the torso/leg clipping.
-- Flipped the cape 180 degrees so its outer texture faces away from the player's back.
+## Features
 
-- Correct 64x32 legacy/OG skin support.
-- Hat/head outer layer on both 64x32 and 64x64 skins.
-- Jacket, sleeves and trouser outer layers on modern 64x64 skins.
-- Official Minecraft cape caching from the online player's Paper profile.
-- Simple 3D cape rendered from the cached cape texture.
-- Native BlueMap head icon becomes transparent when close while the name remains spaced normally.
-- Uses a versioned `player-models-0.5.3.js` file to avoid stale browser cache.
+- Live 3D player models in BlueMap
+- Player position, body yaw, and head pitch tracking
+- Smooth movement interpolation
+- Supports modern 64x64 Minecraft skins
+- Supports legacy 64x32 Minecraft skins
+- Supports classic/Steve-width player geometry
+- Hat / head overlay layer
+- Jacket, sleeve, and pants overlay layers on modern skins
+- Official Minecraft cape support when a cape is available
+- Keeps BlueMap's native player nametag
+- Hides the native BlueMap player-head icon when the camera is close to the 3D model
+- Preserves nametag spacing by making the icon transparent rather than removing it
+- Skin and cape caching
+- Uses BlueMap's existing player feed instead of publishing duplicate player-position data
 
-## Build
+## Requirements
 
-The included GitHub Action builds with Java 25 and Paper API `26.2.build.111-stable`.
+- Paper 26.2
+- Java 25
+- BlueMap 5.23
+- BlueMapAPI 2.8.0
 
-After the Action succeeds, download the artifact and put `BlueMap-3DPlayerModels-Paper-0.5.3.jar` in your server's `plugins/` folder, replacing the old version. Restart the server and hard-refresh BlueMap.
+The included build currently targets Paper `26.2.build.111-stable`.
 
-Browser console should show:
+## Installation
 
-    [BlueMap3DPlayerModelsPaper] v0.5.3 renderer loaded
+1. Build or download `BlueMap-3DPlayerModels-Paper-1.0.0.jar`.
+2. Put the jar in your server's `plugins/` folder.
+3. Restart the server.
+4. Open BlueMap.
+5. Hard-refresh the browser if an older version of the renderer was previously cached.
 
-Cached web files are created under BlueMap's web root:
+You can confirm the frontend loaded by opening the browser console. You should see:
 
-    bluemap-3d-player-models-paper/
-      player-models-0.5.3.js
-      skins/<uuid>.png
-      capes/<uuid>.png
+```text
+[BlueMap3DPlayerModelsPaper] v1.0.0 renderer loaded
+```
 
+## Configuration
 
-### v0.5.3
-- Outer skin layers (hat, jacket, sleeves, pants) render from both sides so their inside faces are visible.
+There is currently no separate config file. The small frontend settings can be adjusted in:
+
+```text
+src/main/resources/web/player-models-1.0.0.js
+```
+
+### Player icon hide distance
+
+```js
+const HIDE_NATIVE_MARKER_DISTANCE = 35;
+```
+
+This controls how close the BlueMap camera must be before the normal BlueMap player-head icon becomes transparent.
+
+Examples:
+
+```js
+const HIDE_NATIVE_MARKER_DISTANCE = 20; // hide only when quite close
+const HIDE_NATIVE_MARKER_DISTANCE = 50; // hide from farther away
+```
+
+The player's BlueMap nametag remains visible.
+
+### Player update polling interval
+
+```js
+const POLL_MS = 1000;
+```
+
+This is how often the renderer refreshes BlueMap's live player data, in milliseconds.
+
+Examples:
+
+```js
+const POLL_MS = 500;  // twice per second
+const POLL_MS = 1000; // once per second (default)
+const POLL_MS = 2000; // once every two seconds
+```
+
+Movement is interpolated between updates, so lowering this value is usually unnecessary.
+
+## Skin support
+
+### Modern skins
+
+Modern 64x64 Java Edition skins are supported, including:
+
+- base skin
+- hat layer
+- jacket layer
+- sleeve layers
+- pants layers
+
+### Legacy skins
+
+Legacy 64x32 Java Edition skins are supported.
+
+For legacy skins, the left arm and left leg use the classic mirrored right-limb texture layout, matching the old Minecraft skin format.
+
+## Capes
+
+If Paper reports an official cape URL on the player's profile, the plugin downloads and caches the cape and renders it behind the player model.
+
+Players without a cape simply render without one.
+
+## How it works
+
+The Paper plugin handles web asset installation and player skin/cape caching.
+
+The BlueMap web renderer:
+
+1. reads BlueMap's existing live `players.json` data,
+2. creates a Three.js player model for each visible player,
+3. applies the cached Minecraft skin,
+4. updates position and rotation,
+5. smoothly interpolates movement,
+6. keeps BlueMap's native nametag available.
+
+## Building
+
+A GitHub Actions workflow is included.
+
+You can also build with Gradle:
+
+```bash
+gradle build
+```
+
+The jar will be created under:
+
+```text
+build/libs/
+```
+
+## Notes
+
+- Armor rendering is intentionally not included.
+- The renderer currently uses classic/Steve-width arms.
+- BlueMap frontend internals are not a guaranteed stable API, so future BlueMap releases may require compatibility updates.
+
+## License
+
+Add your preferred license before publishing the repository publicly if you have not already chosen one.

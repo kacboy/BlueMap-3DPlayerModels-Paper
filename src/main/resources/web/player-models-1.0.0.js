@@ -28,7 +28,7 @@
         sceneRoot.name = "bluemap-paper-player-models";
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info("[BlueMap3DPlayerModelsPaper] v0.5.3 renderer loaded");
+        console.info("[BlueMap3DPlayerModelsPaper] v1.0.0 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();

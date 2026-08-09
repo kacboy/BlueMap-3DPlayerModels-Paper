@@ -1,5 +1,5 @@
 name: BlueMap3DPlayerModelsPaper
-version: 0.5.3
+version: 1.0.0
 main: dev.kacboy.bluemap3dplayermodels.BlueMap3DPlayerModelsPlugin
 api-version: '26.2'
 depend: [BlueMap]
