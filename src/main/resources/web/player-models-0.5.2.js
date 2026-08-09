@@ -28,7 +28,7 @@
         sceneRoot.name = "bluemap-paper-player-models";
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info("[BlueMap3DPlayerModelsPaper] v0.5.1 renderer loaded");
+        console.info("[BlueMap3DPlayerModelsPaper] v0.5.2 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();
@@ -122,7 +122,7 @@
         });
 
         const headPivot = new Three.Group();
-        headPivot.position.set(0, 1.625, 0);
+        headPivot.position.set(0, 1.75, 0);
         bodyRoot.add(headPivot);
 
         const head = new Three.Mesh(
@@ -142,7 +142,7 @@
             new Three.BoxGeometry(0.5, 0.75, 0.25),
             placeholder
         );
-        body.position.y = 1.0;
+        body.position.y = 1.125;
         bodyRoot.add(body);
 
         const bodyOuter = new Three.Mesh(
@@ -156,7 +156,7 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-        rightArm.position.set(-0.375, 1.0, 0);
+        rightArm.position.set(-0.375, 1.125, 0);
         bodyRoot.add(rightArm);
 
         const rightArmOuter = new Three.Mesh(
@@ -170,7 +170,7 @@
             new Three.BoxGeometry(0.25, 0.75, 0.25),
             placeholder
         );
-        leftArm.position.set(0.375, 1.0, 0);
+        leftArm.position.set(0.375, 1.125, 0);
         bodyRoot.add(leftArm);
 
         const leftArmOuter = new Three.Mesh(
@@ -210,7 +210,7 @@
 
         // Pivot the cape at the shoulders so its slight backward tilt looks natural.
         const capePivot = new Three.Group();
-        capePivot.position.set(0, 1.375, -0.145);
+        capePivot.position.set(0, 1.5, -0.145);
         capePivot.rotation.x = 0.10;
         bodyRoot.add(capePivot);
 
@@ -219,6 +219,7 @@
             transparentPlaceholder
         );
         cape.position.set(0, -0.5, -0.035);
+        cape.rotation.y = Math.PI;
         cape.visible = false;
         capePivot.add(cape);
 

@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 
 public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Listener {
     private static final String WEB_DIR = "bluemap-3d-player-models-paper";
-    private static final String SCRIPT_NAME = "player-models-0.5.1.js";
+    private static final String SCRIPT_NAME = "player-models-0.5.2.js";
 
     private final AtomicReference<BlueMapAPI> blueMap = new AtomicReference<>();
     private final Consumer<BlueMapAPI> enableListener = this::onBlueMapEnable;
