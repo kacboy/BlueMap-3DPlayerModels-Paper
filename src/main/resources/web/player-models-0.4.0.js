@@ -396,8 +396,8 @@
                 marker.element.querySelector("img");
 
             if (head) {
-                head.style.display =
-                    shouldHide ? "none" : "";
+                head.style.opacity =
+                    shouldHide ? "0" : "1";
             }
         }
     }
@@ -421,7 +421,7 @@
                 marker.element.querySelector("img");
 
             if (head) {
-                head.style.display = "";
+                head.style.opacity = "1";
             }
         }
 
