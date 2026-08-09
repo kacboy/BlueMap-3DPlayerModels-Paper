@@ -1,7 +1,1 @@
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        mavenCentral()
-    }
-}
-rootProject.name = 'BlueMapPlayerModelsPaper'
+rootProject.name = 'BlueMap-3DPlayerModels-Paper'

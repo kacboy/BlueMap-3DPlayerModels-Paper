@@ -1,81 +1,30 @@
-# BlueMapPlayerModelsPaper
+# BlueMap-3DPlayerModels-Paper 0.5.1
 
-Small Paper addon for **Paper 26.2** + **BlueMap 5.23** that adds skin-textured 3D online-player models to the BlueMap webapp.
+Paper 26.2 + BlueMap 5.23 addon that renders live players as skin-textured 3D models.
 
-## What version 0.3 does
+## 0.5.1 additions
 
-- Uses BlueMap's existing `/live/players.json` data for UUID, position, yaw and pitch.
-- Uses BlueMap's own configured skin provider to cache each online player's full skin.
-- Registers a custom JavaScript file with BlueMap through `BlueMapAPI#getWebApp().registerScript(...)`.
-- Adds a Three.js group to `window.bluemap.mapViewer.markers`.
-- Smoothly interpolates player position and rotation in the browser.
-- Supports standard 64x64 skins with classic-width arms.
-- Uses Minecraft-correct per-vertex cuboid UVs, fixing rotated/misaligned skin faces.
-- Leaves BlueMap's native player head/name markers enabled and asks BlueMap to repair them if they are missing after a map reload.
+- Correct 64x32 legacy/OG skin support.
+- Hat/head outer layer on both 64x32 and 64x64 skins.
+- Jacket, sleeves and trouser outer layers on modern 64x64 skins.
+- Official Minecraft cape caching from the online player's Paper profile.
+- Simple 3D cape rendered from the cached cape texture.
+- Native BlueMap head icon becomes transparent when close while the name remains spaced normally.
+- Uses a versioned `player-models-0.5.1.js` file to avoid stale browser cache.
 
-This build intentionally does **not** include armor, crouching/walking animations, outer skin layers, or slim-arm auto-detection. BlueMap's normal player head/name markers are deliberately kept.
+## Build
 
-## Build it
+The included GitHub Action builds with Java 25 and Paper API `26.2.build.111-stable`.
 
-You need **JDK 25** and **Gradle**.
+After the Action succeeds, download the artifact and put `BlueMap-3DPlayerModels-Paper-0.5.1.jar` in your server's `plugins/` folder, replacing the old version. Restart the server and hard-refresh BlueMap.
 
-From this folder:
+Browser console should show:
 
-```bash
-gradle build
-```
+    [BlueMap3DPlayerModelsPaper] v0.5.1 renderer loaded
 
-The plugin jar will be:
+Cached web files are created under BlueMap's web root:
 
-```text
-build/libs/BlueMapPlayerModelsPaper-0.3.0.jar
-```
-
-Put that jar beside BlueMap in your Paper server's `plugins/` folder and restart the server.
-
-## What you should see in the log
-
-```text
-BlueMapPlayerModelsPaper enabled; waiting for BlueMap API.
-Installed BlueMap web extension for BlueMap 5.23 / API 2.8.0
-```
-
-Then hard-refresh the BlueMap page (`Ctrl+F5`). Open the browser console if needed; the frontend logs:
-
-```text
-[BlueMapPlayerModelsPaper] 3D player renderer loaded
-```
-
-## Files installed by the plugin
-
-Inside BlueMap's configured web root:
-
-```text
-bluemap-player-models-paper/
-  player-models-0.4.0.js
-  skins/
-    <uuid>.png
-```
-
-## Troubleshooting
-
-If the model is gray, check whether the corresponding skin PNG exists in the BlueMap web root. The plugin refreshes online skins at startup, on join, and every 10 minutes.
-
-If no model appears, confirm the BlueMap page can request the same `.../live/players.json` URL that BlueMap's ordinary player markers use.
-
-If the model faces backward, change the sign in `targetYaw` in `player-models-0.4.0.js`. Coordinate conventions can change between BlueMap webapp revisions; 0.4 uses the convention observed in BlueMap 5.23's current webapp.
-
-## Why this design
-
-BlueMap 5.23's webapp creates its own player manager from:
-
-```text
-map.data.liveDataRoot + "/live/players.json"
-```
-
-and exposes the active map as `window.bluemap.mapViewer.map`. The addon uses those same values rather than publishing a second player-position API.
-
-
-## 0.3.0 fixes
-- Uses the face-by-face UV mapping proven by DecoderCoder/bluemap-player-models on BlueMap's bundled Three.js.
-- Forces BlueMap's native `bm-players` marker set and live player markers visible so the original head/name marker coexists with the 3D model.
+    bluemap-3d-player-models-paper/
+      player-models-0.5.1.js
+      skins/<uuid>.png
+      capes/<uuid>.png

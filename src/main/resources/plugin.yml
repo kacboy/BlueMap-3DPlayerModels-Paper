@@ -1,7 +1,7 @@
-name: BlueMapPlayerModelsPaper
-version: 0.4.0
-main: dev.kacboy.bluemapplayermodels.BlueMapPlayerModelsPlugin
+name: BlueMap3DPlayerModelsPaper
+version: 0.5.1
+main: dev.kacboy.bluemap3dplayermodels.BlueMap3DPlayerModelsPlugin
 api-version: '26.2'
 depend: [BlueMap]
 authors: [kacboy]
-description: Adds simple skin-textured 3D live player models to BlueMap 5.23.
+description: Adds skin-textured 3D live player models, outer skin layers and capes to BlueMap 5.23.
