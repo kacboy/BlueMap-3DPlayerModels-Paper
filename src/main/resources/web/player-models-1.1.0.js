@@ -28,7 +28,7 @@
         sceneRoot.name = "bluemap-paper-player-models";
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info("[BlueMap3DPlayerModelsPaper] v1.0.0 renderer loaded");
+        console.info("[BlueMap3DPlayerModelsPaper] v1.1.0 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();
@@ -260,11 +260,48 @@
                 Number(player.rotation?.pitch) || 0
             ),
             materials: [],
-            nativeMarkerHidden: false
+            nativeMarkerHidden: false,
+            slim: false
         };
     }
 
-    function loadSkin(actor, uuid) {
+    async function readSkinModel(uuid) {
+        try {
+            const url = new URL(`models/${uuid}.txt`, addonRoot).href + `?v=${Date.now()}`;
+            const response = await fetch(url, { cache: "no-store" });
+            if (!response.ok) return "classic";
+            const value = (await response.text()).trim().toLowerCase();
+            return value === "slim" ? "slim" : "classic";
+        } catch {
+            return "classic";
+        }
+    }
+
+    function setArmModel(actor, slim) {
+        const width = slim ? 0.1875 : 0.25;       // 3 px vs 4 px
+        const outerWidth = slim ? 0.21875 : 0.28125;
+        const x = slim ? 0.34375 : 0.375;         // keep shoulders attached to torso
+
+        for (const mesh of [actor.rightArm, actor.leftArm]) {
+            mesh.geometry.dispose();
+            mesh.geometry = new Three.BoxGeometry(width, 0.75, 0.25);
+        }
+
+        for (const mesh of [actor.rightArmOuter, actor.leftArmOuter]) {
+            mesh.geometry.dispose();
+            mesh.geometry = new Three.BoxGeometry(outerWidth, 0.78125, 0.28125);
+        }
+
+        actor.rightArm.position.x = -x;
+        actor.leftArm.position.x = x;
+        actor.rightArmOuter.position.x = -x;
+        actor.leftArmOuter.position.x = x;
+
+        actor.slim = slim;
+    }
+
+    async function loadSkin(actor, uuid) {
+        const skinModel = await readSkinModel(uuid);
         const url = new URL(`skins/${uuid}.png`, addonRoot).href + `?v=${Date.now()}`;
 
         new Three.TextureLoader().load(
@@ -285,17 +322,23 @@
 
                 prepareTexture(texture);
 
+                // Legacy 64x32 skins are always classic-width. Modern skins use
+                // Paper's authenticated CLASSIC/SLIM profile metadata.
+                const useSlimArms = isModern && skinModel === "slim";
+                setArmModel(actor, useSlimArms);
+                const armWidthPixels = useSlimArms ? 3 : 4;
+
                 // Base skin layer.
                 setSkinUVs(actor.head.geometry, 0, 0, 8, 8, 8, false, image.height);
                 setSkinUVs(actor.body.geometry, 16, 16, 8, 12, 4, false, image.height);
-                setSkinUVs(actor.rightArm.geometry, 40, 16, 4, 12, 4, false, image.height);
+                setSkinUVs(actor.rightArm.geometry, 40, 16, armWidthPixels, 12, 4, false, image.height);
                 setSkinUVs(actor.rightLeg.geometry, 0, 16, 4, 12, 4, false, image.height);
 
                 if (isLegacy) {
                     setSkinUVs(actor.leftArm.geometry, 40, 16, 4, 12, 4, true, image.height);
                     setSkinUVs(actor.leftLeg.geometry, 0, 16, 4, 12, 4, true, image.height);
                 } else {
-                    setSkinUVs(actor.leftArm.geometry, 32, 48, 4, 12, 4, false, image.height);
+                    setSkinUVs(actor.leftArm.geometry, 32, 48, armWidthPixels, 12, 4, false, image.height);
                     setSkinUVs(actor.leftLeg.geometry, 16, 48, 4, 12, 4, false, image.height);
                 }
 
@@ -335,8 +378,8 @@
                 if (isModern) {
                     // Modern second layer: jacket, sleeves and trouser overlays.
                     setSkinUVs(actor.bodyOuter.geometry, 16, 32, 8, 12, 4, false, 64);
-                    setSkinUVs(actor.rightArmOuter.geometry, 40, 32, 4, 12, 4, false, 64);
-                    setSkinUVs(actor.leftArmOuter.geometry, 48, 48, 4, 12, 4, false, 64);
+                    setSkinUVs(actor.rightArmOuter.geometry, 40, 32, armWidthPixels, 12, 4, false, 64);
+                    setSkinUVs(actor.leftArmOuter.geometry, 48, 48, armWidthPixels, 12, 4, false, 64);
                     setSkinUVs(actor.rightLegOuter.geometry, 0, 32, 4, 12, 4, false, 64);
                     setSkinUVs(actor.leftLegOuter.geometry, 0, 48, 4, 12, 4, false, 64);
 
@@ -367,6 +410,7 @@
                     );
                 }
 
+                console.info(`[BlueMap3DPlayerModelsPaper] ${useSlimArms ? "slim" : "classic"} arms for ${uuid}`);
                 app.mapViewer.redraw();
             },
             undefined,

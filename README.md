@@ -11,7 +11,7 @@ The plugin uses BlueMap's existing live player data for position and rotation, t
 - Smooth movement interpolation
 - Supports modern 64x64 Minecraft skins
 - Supports legacy 64x32 Minecraft skins
-- Supports classic/Steve-width player geometry
+- Supports Classic/Steve and Slim/Alex arm models
 - Hat / head overlay layer
 - Jacket, sleeve, and pants overlay layers on modern skins
 - Official Minecraft cape support when a cape is available
@@ -32,7 +32,7 @@ The included build currently targets Paper `26.2.build.111-stable`.
 
 ## Installation
 
-1. Build or download `BlueMap-3DPlayerModels-Paper-1.0.0.jar`.
+1. Build or download `BlueMap-3DPlayerModels-Paper-1.1.0.jar`.
 2. Put the jar in your server's `plugins/` folder.
 3. Restart the server.
 4. Open BlueMap.
@@ -41,7 +41,7 @@ The included build currently targets Paper `26.2.build.111-stable`.
 You can confirm the frontend loaded by opening the browser console. You should see:
 
 ```text
-[BlueMap3DPlayerModelsPaper] v1.0.0 renderer loaded
+[BlueMap3DPlayerModelsPaper] v1.1.0 renderer loaded
 ```
 
 ## Configuration
@@ -49,7 +49,7 @@ You can confirm the frontend loaded by opening the browser console. You should s
 There is currently no separate config file. The small frontend settings can be adjusted in:
 
 ```text
-src/main/resources/web/player-models-1.0.0.js
+src/main/resources/web/player-models-1.1.0.js
 ```
 
 ### Player icon hide distance
@@ -90,6 +90,8 @@ Movement is interpolated between updates, so lowering this value is usually unne
 ## Skin support
 
 ### Modern skins
+
+Classic/Steve and Slim/Alex arm models are detected automatically from the player's Paper profile.
 
 Modern 64x64 Java Edition skins are supported, including:
 
@@ -143,9 +145,4 @@ build/libs/
 ## Notes
 
 - Armor rendering is intentionally not included.
-- The renderer currently uses classic/Steve-width arms.
 - BlueMap frontend internals are not a guaranteed stable API, so future BlueMap releases may require compatibility updates.
-
-## License
-
-Add your preferred license before publishing the repository publicly if you have not already chosen one.

@@ -25,7 +25,7 @@ import java.util.function.Consumer;
 
 public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Listener {
     private static final String WEB_DIR = "bluemap-3d-player-models-paper";
-    private static final String SCRIPT_NAME = "player-models-1.0.0.js";
+    private static final String SCRIPT_NAME = "player-models-1.1.0.js";
 
     private final AtomicReference<BlueMapAPI> blueMap = new AtomicReference<>();
     private final Consumer<BlueMapAPI> enableListener = this::onBlueMapEnable;
@@ -33,6 +33,7 @@ public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Lis
 
     private volatile Path skinDirectory;
     private volatile Path capeDirectory;
+    private volatile Path modelDirectory;
 
     @Override
     public void onEnable() {
@@ -61,6 +62,7 @@ public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Lis
             Path addonRoot = Files.createDirectories(api.getWebApp().getWebRoot().resolve(WEB_DIR));
             skinDirectory = Files.createDirectories(addonRoot.resolve("skins"));
             capeDirectory = Files.createDirectories(addonRoot.resolve("capes"));
+            modelDirectory = Files.createDirectories(addonRoot.resolve("models"));
 
             copyResource("/web/" + SCRIPT_NAME, addonRoot.resolve(SCRIPT_NAME));
             api.getWebApp().registerScript(WEB_DIR + "/" + SCRIPT_NAME);
@@ -102,21 +104,28 @@ public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Lis
         BlueMapAPI api = blueMap.get();
         Path skins = skinDirectory;
         Path capes = capeDirectory;
+        Path models = modelDirectory;
 
-        if (api == null || skins == null || capes == null) return;
+        if (api == null || skins == null || capes == null || models == null) return;
 
         // Bukkit profile access stays on the server thread. Network/file work happens async.
         URL capeUrl = null;
+        String skinModel = "classic";
         Player player = Bukkit.getPlayer(uuid);
         if (player != null) {
             try {
-                capeUrl = player.getPlayerProfile().getTextures().getCape();
+                var textures = player.getPlayerProfile().getTextures();
+                capeUrl = textures.getCape();
+                skinModel = textures.getSkinModel() == org.bukkit.profile.PlayerTextures.SkinModel.SLIM
+                        ? "slim"
+                        : "classic";
             } catch (Exception exception) {
-                getLogger().fine("Could not read cape profile for " + uuid + ": " + exception.getMessage());
+                getLogger().fine("Could not read appearance profile for " + uuid + ": " + exception.getMessage());
             }
         }
 
         URL finalCapeUrl = capeUrl;
+        String finalSkinModel = skinModel;
 
         Bukkit.getAsyncScheduler().runNow(this, scheduledTask -> {
             try {
@@ -130,7 +139,20 @@ public final class BlueMap3DPlayerModelsPlugin extends JavaPlugin implements Lis
             } catch (Exception exception) {
                 getLogger().warning("Failed to cache cape for " + uuid + ": " + exception.getMessage());
             }
+
+            try {
+                cacheSkinModel(uuid, finalSkinModel, models);
+            } catch (Exception exception) {
+                getLogger().warning("Failed to cache skin model for " + uuid + ": " + exception.getMessage());
+            }
         });
+    }
+
+    private void cacheSkinModel(UUID uuid, String skinModel, Path root) throws IOException {
+        Path target = root.resolve(uuid + ".txt");
+        Path temporary = root.resolve(uuid + ".txt.tmp");
+        Files.writeString(temporary, skinModel);
+        replaceAtomically(temporary, target);
     }
 
     private void cacheSkin(BlueMapAPI api, UUID uuid, Path root) throws IOException {
