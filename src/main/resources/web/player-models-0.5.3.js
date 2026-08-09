@@ -28,7 +28,7 @@
         sceneRoot.name = "bluemap-paper-player-models";
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info("[BlueMap3DPlayerModelsPaper] v0.5.2 renderer loaded");
+        console.info("[BlueMap3DPlayerModelsPaper] v0.5.3 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();
@@ -324,6 +324,7 @@
                     map: texture,
                     transparent: true,
                     alphaTest: 0.01,
+                    side: Three.DoubleSide,
                     depthWrite: true
                 });
 
