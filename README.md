@@ -32,7 +32,7 @@ The included build currently targets Paper `26.2.build.111-stable`.
 
 ## Installation
 
-1. Build or download `BlueMap-3DPlayerModels-Paper-1.1.1.jar`.
+1. Build or download `BlueMap-3DPlayerModels-Paper-1.1.0.jar`.
 2. Put the jar in your server's `plugins/` folder.
 3. Restart the server.
 4. Open BlueMap.
@@ -41,7 +41,7 @@ The included build currently targets Paper `26.2.build.111-stable`.
 You can confirm the frontend loaded by opening the browser console. You should see:
 
 ```text
-[BlueMap3DPlayerModelsPaper] v1.1.1 renderer loaded
+[BlueMap3DPlayerModelsPaper] v1.1.0 renderer loaded
 ```
 
 ## Configuration
@@ -49,7 +49,7 @@ You can confirm the frontend loaded by opening the browser console. You should s
 There is currently no separate config file. The small frontend settings can be adjusted in:
 
 ```text
-src/main/resources/web/player-models-1.1.1.js
+src/main/resources/web/player-models-1.1.0.js
 ```
 
 ### Player icon hide distance
@@ -145,8 +145,5 @@ build/libs/
 ## Notes
 
 - Armor rendering is intentionally not included.
+- The renderer currently uses classic/Steve-width arms.
 - BlueMap frontend internals are not a guaranteed stable API, so future BlueMap releases may require compatibility updates.
-
-### v1.1.1
-- Fixed slim/Alex arm back-face UV sampling near transparent spacer columns.
-- Uses explicit 3-pixel arm/sleeve UV rectangles with half-texel insets.

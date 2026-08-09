@@ -28,7 +28,7 @@
         sceneRoot.name = "bluemap-paper-player-models";
         app.mapViewer.markers.add(sceneRoot);
 
-        console.info("[BlueMap3DPlayerModelsPaper] v1.1.1 renderer loaded");
+        console.info("[BlueMap3DPlayerModelsPaper] v1.1.0 renderer loaded");
 
         setInterval(syncPlayers, POLL_MS);
         animate();
@@ -331,18 +331,14 @@
                 // Base skin layer.
                 setSkinUVs(actor.head.geometry, 0, 0, 8, 8, 8, false, image.height);
                 setSkinUVs(actor.body.geometry, 16, 16, 8, 12, 4, false, image.height);
-                useSlimArms
-                    ? setSlimArmUVs(actor.rightArm.geometry, "right", false)
-                    : setSkinUVs(actor.rightArm.geometry, 40, 16, 4, 12, 4, false, image.height);
+                setSkinUVs(actor.rightArm.geometry, 40, 16, armWidthPixels, 12, 4, false, image.height);
                 setSkinUVs(actor.rightLeg.geometry, 0, 16, 4, 12, 4, false, image.height);
 
                 if (isLegacy) {
                     setSkinUVs(actor.leftArm.geometry, 40, 16, 4, 12, 4, true, image.height);
                     setSkinUVs(actor.leftLeg.geometry, 0, 16, 4, 12, 4, true, image.height);
                 } else {
-                    useSlimArms
-                        ? setSlimArmUVs(actor.leftArm.geometry, "left", false)
-                        : setSkinUVs(actor.leftArm.geometry, 32, 48, 4, 12, 4, false, image.height);
+                    setSkinUVs(actor.leftArm.geometry, 32, 48, armWidthPixels, 12, 4, false, image.height);
                     setSkinUVs(actor.leftLeg.geometry, 16, 48, 4, 12, 4, false, image.height);
                 }
 
@@ -382,12 +378,8 @@
                 if (isModern) {
                     // Modern second layer: jacket, sleeves and trouser overlays.
                     setSkinUVs(actor.bodyOuter.geometry, 16, 32, 8, 12, 4, false, 64);
-                    useSlimArms
-                        ? setSlimArmUVs(actor.rightArmOuter.geometry, "right", true)
-                        : setSkinUVs(actor.rightArmOuter.geometry, 40, 32, 4, 12, 4, false, 64);
-                    useSlimArms
-                        ? setSlimArmUVs(actor.leftArmOuter.geometry, "left", true)
-                        : setSkinUVs(actor.leftArmOuter.geometry, 48, 48, 4, 12, 4, false, 64);
+                    setSkinUVs(actor.rightArmOuter.geometry, 40, 32, armWidthPixels, 12, 4, false, 64);
+                    setSkinUVs(actor.leftArmOuter.geometry, 48, 48, armWidthPixels, 12, 4, false, 64);
                     setSkinUVs(actor.rightLegOuter.geometry, 0, 32, 4, 12, 4, false, 64);
                     setSkinUVs(actor.leftLegOuter.geometry, 0, 48, 4, 12, 4, false, 64);
 
@@ -480,67 +472,6 @@
         }
 
         texture.needsUpdate = true;
-    }
-
-    function setSlimArmUVs(geometry, side, outerLayer) {
-        const isRight = side === "right";
-        let regions;
-
-        if (isRight && !outerLayer) {
-            regions = [
-                [47, 20, 4, 12],
-                [40, 20, 4, 12],
-                [44, 16, 3, 4],
-                [47, 16, 3, 4],
-                [44, 20, 3, 12],
-                [51, 20, 3, 12]
-            ];
-        } else if (!isRight && !outerLayer) {
-            regions = [
-                [39, 52, 4, 12],
-                [32, 52, 4, 12],
-                [36, 48, 3, 4],
-                [39, 48, 3, 4],
-                [36, 52, 3, 12],
-                [43, 52, 3, 12]
-            ];
-        } else if (isRight) {
-            regions = [
-                [47, 36, 4, 12],
-                [40, 36, 4, 12],
-                [44, 32, 3, 4],
-                [47, 32, 3, 4],
-                [44, 36, 3, 12],
-                [51, 36, 3, 12]
-            ];
-        } else {
-            regions = [
-                [55, 52, 4, 12],
-                [48, 52, 4, 12],
-                [52, 48, 3, 4],
-                [55, 48, 3, 4],
-                [52, 52, 3, 12],
-                [59, 52, 3, 12]
-            ];
-        }
-
-        const uv = geometry.attributes.uv;
-        const inset = 0.5;
-
-        regions.forEach(([rx, ry, rw, rh], face) => {
-            const left = (rx + inset) / 64;
-            const right = (rx + rw - inset) / 64;
-            const top = 1 - (ry + inset) / 64;
-            const bottom = 1 - (ry + rh - inset) / 64;
-            const index = face * 4;
-
-            uv.setXY(index, left, top);
-            uv.setXY(index + 1, right, top);
-            uv.setXY(index + 2, left, bottom);
-            uv.setXY(index + 3, right, bottom);
-        });
-
-        uv.needsUpdate = true;
     }
 
     function setSkinUVs(
